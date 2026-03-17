@@ -14,6 +14,6 @@ void c64_release_reset(void) {
 
 void c64_reset(void) {
    c64_hold_reset();
-   sleep_ms(250);
+   sleep_ms(750);
    c64_release_reset();
 }
