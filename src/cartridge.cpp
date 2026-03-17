@@ -11,13 +11,14 @@
 
 extern CRTHandler crt;
 extern uint8_t crt_buf[CRT_BUFFER_SIZE];
+extern uint8_t crt_bank_table[64];
 
 #define wait_until(t) { for(int i=0; i<t; i++) asm volatile("nop\n"); } // 4ns
 
 #define CRT_BANK(bank)          (crt_buf + (uint32_t)(16 * 1024 * bank))
 
-// Fast look-up of 16k ROM bank address   (320 kb)
-uint8_t * const crt_banks[20] = {
+// Fast look-up of 16k ROM bank address   (450 kb)
+uint8_t * const crt_banks[29] = {
    CRT_BANK(0),
    CRT_BANK(1),
    CRT_BANK(2),
@@ -38,6 +39,15 @@ uint8_t * const crt_banks[20] = {
    CRT_BANK(17),
    CRT_BANK(18),
    CRT_BANK(19),
+   CRT_BANK(20),
+   CRT_BANK(21),
+   CRT_BANK(22),
+   CRT_BANK(23),
+   CRT_BANK(24),
+   CRT_BANK(25),
+   CRT_BANK(26),
+   CRT_BANK(27),
+   CRT_BANK(28)
 };
 
 #define CORE1_STACK_SIZE 4096
@@ -100,7 +110,6 @@ uint8_t run_cart(char *filename, bool clear_buffer) {
       multicore_launch_core1_with_stack(run_cart_zaxxon, core1_stack, CORE1_STACK_SIZE);
    }
 
-   c64_reset();
    printf("done\n");
 
    return(FILE_OK);
@@ -113,9 +122,9 @@ void __time_critical_func(run_cart_normal)(void) {
    volatile uint32_t control;
    volatile uint32_t addr;
 
-   uint32_t irqstatus = save_and_disable_interrupts();
+   c64_reset();
 
-   //wait_high(PHI2);
+   uint32_t irqstatus = save_and_disable_interrupts();
 
    SET_DATA_MODE_IN
    while(1) {
@@ -145,6 +154,8 @@ void __time_critical_func(run_cart_magic_desk)(void) {
    volatile uint32_t addr;
    volatile uint8_t data;
    uint8_t *crt_ptr = crt_banks[0];
+
+   c64_reset();
 
    uint32_t irqstatus = save_and_disable_interrupts();
 
@@ -196,6 +207,8 @@ void __time_critical_func(run_cart_ocean)(void) {
    volatile uint8_t data;
    uint8_t *crt_ptr = crt_banks[0];
 
+   c64_reset();
+
    uint32_t irqstatus = save_and_disable_interrupts();
 
    SET_DATA_MODE_IN
@@ -220,7 +233,7 @@ void __time_critical_func(run_cart_ocean)(void) {
          SET_DATA_MODE_IN
          data = DATA_IN;
          if( !(control & IO1_MASK) && (addr == 0xDE00) )
-            crt_ptr = crt_banks[data & 0x3f];
+            crt_ptr = crt_banks[data % 16];
       }
    }  // end loop
 }
@@ -232,7 +245,9 @@ void __time_critical_func(run_cart_fun_play)(void) {
    volatile uint32_t control;
    volatile uint32_t addr;
    volatile uint8_t data;
-   uint8_t bank = 0;
+   uint8_t *crt_ptr = crt_banks[0];
+
+   c64_reset();
 
    uint32_t irqstatus = save_and_disable_interrupts();
 
@@ -246,7 +261,7 @@ void __time_critical_func(run_cart_fun_play)(void) {
       if (control & RW_MASK) {
          if( !(control & ROML_MASK) ) {
 
-            DATA_OUT(crt.bank[bank].datal[(addr - crt.bank[bank].load_addrl)]);
+            DATA_OUT(crt_ptr[addr & 0x3FFF]);
             SET_DATA_MODE_OUT
             wait_high(ROML);
             SET_DATA_MODE_IN
@@ -259,8 +274,7 @@ void __time_critical_func(run_cart_fun_play)(void) {
          if( !(control & IO1_MASK) && (addr == 0xDE00) ) {
             if ( !(data & 0x80)) {
                c64_set_exrom_game(0, 1);
-               //bank = ( (data >> 3) & 0x07 ) | ( (data & 0x01) << 3);
-               bank = data & 0x3F; 
+               crt_ptr = crt_banks[( (data >> 3) & 0x07 ) | ( (data & 0x01) << 3)];
             } else {
                c64_set_exrom_game(1, 1);
             }
@@ -278,6 +292,8 @@ void __time_critical_func(run_cart_super_games)(void) {
    volatile uint8_t data;
    uint8_t *crt_ptr = crt_banks[0];
    bool disable = false;
+
+   c64_reset();
 
    uint32_t irqstatus = save_and_disable_interrupts();
 
@@ -326,9 +342,9 @@ void __time_critical_func(run_cart_easyflash)(void) {
    volatile uint32_t control;
    volatile uint32_t addr;
    volatile uint8_t data;
-   uint8_t *crt_ptr = crt_banks[0];
-   uint8_t *ram_buf = (uint8_t *) malloc(255);
-   uint8_t mode = 0;
+   volatile uint8_t *crt_ptr = crt_banks[0];
+   volatile uint8_t *ram_buf = (uint8_t *) malloc(256);
+   volatile uint8_t mode = 0;
    uint8_t ef_control[8][2] = {
       {1, 0},  // Ultimax
       {1, 1},  // none
@@ -339,6 +355,8 @@ void __time_critical_func(run_cart_easyflash)(void) {
       {0, 0},  // 16K
       {0, 1}   // 8K
    };
+
+   c64_reset();
 
    uint32_t irqstatus = save_and_disable_interrupts();
 
@@ -373,17 +391,21 @@ void __time_critical_func(run_cart_easyflash)(void) {
             switch (addr & 0xff) {
 
                case 0x00:
-                  crt_ptr = crt_banks[data & 0x3f];
+                  crt_ptr = crt_banks[crt_bank_table[data & 0x3F]];
                   break;
 
                case 0x02:
                   mode = (((data >> 5) & 0x04) | (data & 0x02) | (((data >> 2) & 0x01) & ~data)) & 0x07;
                   c64_set_exrom_game(ef_control[mode][0], ef_control[mode][1]);
+                  break;
             }
+
+            wait_high(IO1);
          }
 
          if (!(control & IO2_MASK)) {
             ram_buf[addr & 0xff] = data;
+            wait_high(IO2);
          }
       }
    }  // end loop
@@ -395,8 +417,9 @@ void __time_critical_func(run_cart_dinamic)(void) {
 
    volatile uint32_t control;
    volatile uint32_t addr;
-   volatile uint8_t data;
    uint8_t *crt_ptr = crt_banks[0];
+
+   c64_reset();
 
    uint32_t irqstatus = save_and_disable_interrupts();
 
@@ -413,10 +436,13 @@ void __time_critical_func(run_cart_dinamic)(void) {
          SET_DATA_MODE_OUT
          wait_high(ROML);
          SET_DATA_MODE_IN
-      } 
 
-      if( !(control & IO1_MASK) )
-         crt_ptr = crt_banks[addr & 0x3F];
+      }  
+
+      if( !(control & IO1_MASK) ) {
+         crt_ptr = crt_banks[addr & 0xF];
+         wait_high(IO1);
+      }
 
    }  // end loop
 }
@@ -430,6 +456,8 @@ void __time_critical_func(run_cart_zaxxon)(void) {
    uint8_t *data;
    uint8_t *crt_ptr;
    uint8_t *crt_rom_ptr = crt_banks[0];
+
+   c64_reset();
 
    uint32_t irqstatus = save_and_disable_interrupts();
 

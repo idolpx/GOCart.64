@@ -8,41 +8,8 @@
 #include "crt.h"
 
 uint8_t __not_in_flash() crt_buf[CRT_BUFFER_SIZE];
-
-#define CRT_BANK(bank)          (crt_buf + (uint32_t)(16 * 1024 * bank))
-
-// Fast look-up of 16k ROM bank address   (450 kb)
-uint8_t * const crt_banks[29] = {
-   CRT_BANK(0),
-   CRT_BANK(1),
-   CRT_BANK(2),
-   CRT_BANK(3),
-   CRT_BANK(4),
-   CRT_BANK(5),
-   CRT_BANK(6),
-   CRT_BANK(7),
-   CRT_BANK(8),
-   CRT_BANK(9),
-   CRT_BANK(10),
-   CRT_BANK(11),
-   CRT_BANK(12),
-   CRT_BANK(13),
-   CRT_BANK(14),
-   CRT_BANK(15),
-   CRT_BANK(16),
-   CRT_BANK(17),
-   CRT_BANK(18),
-   CRT_BANK(19),
-   CRT_BANK(20),
-   CRT_BANK(21),
-   CRT_BANK(22),
-   CRT_BANK(23),
-   CRT_BANK(24),
-   CRT_BANK(25),
-   CRT_BANK(26),
-   CRT_BANK(27),
-   CRT_BANK(28)
-};
+// CRT file bank -> RAM bank
+uint8_t crt_bank_table[64];
 
 CRTHandler crt;
 
@@ -101,6 +68,8 @@ void crt_init(CRTHandler *crt) {
    }
    crt->nbanks = 0;
    crt->size = 0;
+
+   memset(crt_bank_table, 0, sizeof(crt_bank_table));
 }
 
 void crt_clear_buffer(CRTHandler *crt) {
@@ -110,6 +79,8 @@ CRTFileError crt_build_banks(CRTHandler *crt) {
 
    uint8_t buf[64];
    UINT br;
+   uint8_t ram_bank_number = 0;
+   uint8_t prev_number = 0;
 
    // clear
    crt->nbanks = 0;
@@ -188,6 +159,18 @@ CRTFileError crt_build_banks(CRTHandler *crt) {
       f_read(&crt->fil, buf, 2, &br);
       uint8_t number = ((buf[0] << 8) | buf[1]); 
 
+      if (number == prev_number) {
+         crt_bank_table[number] = ram_bank_number;
+      } else if (number > ram_bank_number + 1) {
+         crt_bank_table[number] = ram_bank_number + 1;
+         ram_bank_number++;
+      } else if (number == ram_bank_number + 1) {
+         crt_bank_table[number] = ram_bank_number + 1;
+         ram_bank_number = number;
+      } 
+
+      prev_number = number;
+
       f_read(&crt->fil, buf, 2, &br);
       uint16_t load_addr = ((buf[0] << 8) | buf[1]);
 
@@ -195,19 +178,32 @@ CRTFileError crt_build_banks(CRTHandler *crt) {
       uint16_t size = ((buf[0] << 8) | buf[1]);
 
       uint32_t ofs = 0;
+      uint8_t bank = crt_bank_table[number];
       
       // ROML bank (and ROMH for >8k images)
       if(load_addr == 0x8000 && size <= 16*1024) {
+
          // Support ROML only cartridges with more than 64 banks
-         // 7: Fun Play, 19: Magic desk
-         if(size <= 8*1024 && (crt->type == 7 || crt->type == 19) ) {
+         if(size <= 8*1024 && (crt->type == 7) ) {
+
+            // Fun Play
+            ofs = (( (number >> 3) & 0x07 ) | ( (number & 0x01) << 3)) * 16*1024;
+
+         } else if(size <= 8*1024 && (crt->type == 19) ) {
+
+            // Magic Desk
             bool odd_bank = number & 1;
             number >>= 1;
             ofs = number * 16*1024;
-
+            
             // Use ROMH bank location for odd banks
-            if (odd_bank)
+            if(odd_bank)
                ofs += 8*1024;
+
+         } else if( size <= 8*1024 && (crt->type == 32) ) {
+
+            // EasyFlash
+            ofs = bank * 16*1024; 
 
          } else {
 
@@ -216,15 +212,29 @@ CRTFileError crt_build_banks(CRTHandler *crt) {
 
       // ROMH bank
       } else if ( (load_addr == 0xa000 || load_addr == 0xe000) && size <= 8*1024 ) {
-         ofs = number * 16*1024 + 8*1024;
+         if (crt->type == 5) {   
+            // Ocean
+            ofs = (number % 16) * 16*1024 + 8*1024;
+         } else if(crt->type == 32) {
+            // EasyFlash
+            ofs = bank * 16*1024 + 8*1024;
+         } else {
+            ofs = number * 16*1024 + 8*1024;
+         }
       } else if ( load_addr == 0xf000 && size <= 4*1024 ) {
-         ofs = number * 16*1024 + 8*1024;
+         if(crt->type == 32) {
+            // EasyFlash
+            ofs = bank * 16*1024 + 8*1024;
+         } else { 
+            ofs = number * 16*1024 + 8*1024;
+         }
       }
-      
-      printf("bank %d, load_addr: 0x%X, ofs: %u\n", number, load_addr, ofs);
 
       uint8_t *read_buf = crt_buf + ofs;
       f_read(&crt->fil, read_buf, size, &br);
+      
+      printf("bank %d, load_addr: 0x%X, ofs: %u, crt_bank_table[%d]: %d, br: %d\n", 
+            number, load_addr, ofs, number, crt_bank_table[number], br);
 
       // Mirror 4k image
       if(size <= 4*1024)
