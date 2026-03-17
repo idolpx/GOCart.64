@@ -11,7 +11,6 @@ public:
    FileReader(const char* filename) : fileOpened(false) {
       if (f_open(&file, filename, FA_READ) == FR_OK)
          fileOpened = true;
-
    }
 
    ~FileReader() {

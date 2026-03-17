@@ -1,6 +1,7 @@
 
 #include <stdio.h>
 #include <string.h>
+#include <cstdlib>      // free
 #include "pico/stdlib.h"
 #include "pico/multicore.h"
 #include "pico/stdio_uart.h"
@@ -17,7 +18,6 @@
 #include "utils.h"
 #include "ff.h"
 #include "cartridge.h"
-#include "crt.h"
 #include "FileReader.h"
 #include "BufferReader.h"
 #include "CRTParser.h"
@@ -26,7 +26,6 @@
 
 void run_shell(void);
 void run_read_test(void);
-void run_read_file(void);
 
 int main(void) {
    
@@ -34,11 +33,6 @@ int main(void) {
 
    c64_set_exrom_game(1, 1);         // <no cartridge>
    c64_reset();
-
-   // set buffer for ROM
-   extern uint8_t crt_buf[CRT_BUFFER_SIZE];
-   extern CRTHandler crt;
-   crt_set_buffer(&crt, crt_buf);
 
    // mount SD
    FATFS fs;
@@ -53,7 +47,6 @@ int main(void) {
 
    run_shell();
    //run_read_test();
-   //run_read_file();
 
    return 0;
 }
@@ -63,7 +56,6 @@ void run_shell(void) {
    const int cmd_buffer_size = 64;
    char cmd_buffer[cmd_buffer_size];
    uint8_t cmd_index = 0;
-   uint8_t rc;
    char path[32] = "/";
    char prev_path[64];
    FRESULT res;
@@ -117,9 +109,11 @@ void run_shell(void) {
                   sprintf(prev_path, "%s%s", path, token);
                else
                   sprintf(prev_path, "%s/%s", path, token);
-               if (run_cart(prev_path) != FILE_OK) {
+               FileReader fr(prev_path);
+               if(fr.eof())
                   printf("E: file not found (%s)\n", prev_path);
-               }
+               else
+                  run_cart(fr);
             } else if (strcmp(token, "ls") == 0) {
                // list files/directories
                res = f_opendir(&dir, path);
@@ -133,7 +127,7 @@ void run_shell(void) {
                      if (fno.fattrib & AM_DIR)
                         printf("[DIR] %s\n", name);
                      else
-                        printf("[FILE] %s (%lu bytes)\n", name, fno.fsize);
+                        printf("[FILE] %s (%llu bytes)\n", name, fno.fsize);
                   }
                   f_closedir(&dir);
                } else {
@@ -176,19 +170,19 @@ void run_shell(void) {
                uint32_t data_size = &__data_end__ - &__data_start__;
                uint32_t bss_size  = &__bss_end__ - &__bss_start__;
                uint32_t stack_size = &__StackTop - &__StackLimit;
-               printf("DATA:  %u bytes\n", data_size);
-               printf("BSS:   %u bytes\n", bss_size);
-               printf("STACK: %u bytes reserved\n", stack_size);
+               printf("DATA:  %lu bytes\n", data_size);
+               printf("BSS:   %lu bytes\n", bss_size);
+               printf("STACK: %lu bytes reserved\n", stack_size);
                printf("CPU frequency: %.0f MHz\n", clock_get_hz(clk_sys) / 1e6);
-               printf("flash size: %ld bytes\n", PICO_FLASH_SIZE_BYTES);
-               printf("flash sector size: %ld bytes\n", FLASH_SECTOR_SIZE);
-               printf("flash page size: %ld bytes\n", FLASH_PAGE_SIZE);
+               printf("flash size: %d bytes\n", PICO_FLASH_SIZE_BYTES);
+               printf("flash sector size: %d bytes\n", FLASH_SECTOR_SIZE);
+               printf("flash page size: %d bytes\n", FLASH_PAGE_SIZE);
                printf("flash area address: 0x%X\n", FLASH_AREA_OFFSET);
                printf("XIP_BASE address: 0x%X\n", XIP_BASE);
                extern uint8_t crt_buf[CRT_BUFFER_SIZE];
-               printf("max CRT size: %ld bytes\n", sizeof(crt_buf));
+               printf("max CRT size: %d bytes\n", sizeof(crt_buf));
             } else if (strcmp(token, "run") == 0) {
-               run_cart(NULL, false);
+               //run_cart(NULL, false);
             } else if (strlen(cmd_buffer) == 0) {
                printf("%s:> ", path);
                continue;
@@ -208,7 +202,6 @@ void run_read_test(void) {
 
    volatile uint32_t control;
    volatile uint16_t addr;
-   volatile uint8_t data;
 
    uint8_t arr[300];
    int i = 0;
@@ -244,25 +237,3 @@ void run_read_test(void) {
    } // end loop
 }
 
-void run_read_file(void) {
-
-   bool r;
-   uint8_t crtData[64];
-   strcpy((char *)crtData, "C64 CARTRIDGE   ");
-
-   //
-   FileReader fr("ef/fixit.crt");
-   BufferReader br(crtData, sizeof(crtData));
-   //
-
-   CRTParser crt_file(fr);
-   r = crt_file.parse();
-   printf("r = %d\n", r);
-
-   CRTParser crt_buf(br);
-   r = crt_buf.parse();
-   printf("r = %d\n", r);
-
-   while(1)
-      ;
-}

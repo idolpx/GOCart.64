@@ -1,9 +1,14 @@
 #ifndef CARTRIDGE_H
 #define CARTRIDGE_H
 
+#include "FileReader.h"
+#include "BufferReader.h"
+#include "Reader.h"
+#include "CRTParser.h"
+
 #define COMPILER_BARRIER() asm volatile("" ::: "memory")
 
-uint8_t run_cart(char *filename=NULL, bool clear_buffer=true);
+uint8_t run_cart(IDataReader &r);
 
 void run_cart_normal(void);
 void run_cart_magic_desk(void);

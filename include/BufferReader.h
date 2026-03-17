@@ -2,6 +2,8 @@
 #ifndef BUFFERREADER_H
 #define BUFFERREADER_H
 
+#include <cstring>
+
 class BufferReader : public IDataReader {
 public:
    BufferReader(const uint8_t* buf, size_t len) : buffer(buf), length(len), pos(0) {}

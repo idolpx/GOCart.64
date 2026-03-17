@@ -6,7 +6,6 @@
 #include "pico/i2c_slave.h"
 
 #include "board.h"
-#include "crt.h"
 
 #define SOF          0xAA
 #define FRAME_ERR    0xC0
@@ -29,8 +28,6 @@ static volatile int tx_len = 0;
 static volatile int tx_index = 0;
 
 static uint8_t regs[MAX_REGISTERS_NUM];
-
-extern CRTHandler crt;
 
 //
 
@@ -108,7 +105,7 @@ int handle_command(uint8_t cmd, uint8_t *data, uint16_t len, uint8_t *resp, int 
             *error = 1;
             return 1;
          }
-         resp[0] = crt.rawdata[addr];
+         //resp[0] = crt.rawdata[addr];
          return 1;
 
       case 0x13: // write cartridge location
@@ -124,7 +121,7 @@ int handle_command(uint8_t cmd, uint8_t *data, uint16_t len, uint8_t *resp, int 
             *error = 1;
             return 1;
          }
-         crt.rawdata[addr] = data[3];
+         //crt.rawdata[addr] = data[3];
          return 0;
 
       case 0x23: // write cartridge buffer
@@ -140,7 +137,7 @@ int handle_command(uint8_t cmd, uint8_t *data, uint16_t len, uint8_t *resp, int 
             *error = 1;
             return 1;
          }
-         memcpy(crt.rawdata + addr, data+3, len-3);
+         //memcpy(crt.rawdata + addr, data+3, len-3);
 
          return 0;
 
