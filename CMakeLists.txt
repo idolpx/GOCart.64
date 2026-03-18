@@ -23,8 +23,6 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall")
 # Initialize the SDK
 pico_sdk_init()
 
-include(/usr/share/pico-sdk/pico_sdk_init.cmake)
-
 # fetch elehobica/pico_fatfs
 include(FetchContent)
 
