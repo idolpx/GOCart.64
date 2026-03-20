@@ -9,7 +9,7 @@ static spi_t spi = {
       .miso_gpio = SD_MISO,
       .mosi_gpio = SD_MOSI,
       .sck_gpio = SD_SCK,
-      .baud_rate = 2 * 1000 * 1000,
+      .baud_rate = SD_SPEED
 };
 
 static sd_spi_if_t spi_if = {

@@ -30,6 +30,7 @@
 #define SD_MOSI      35
 #define SD_MISO      36
 #define SD_CS        37
+#define SD_SPEED     15 * 1000 * 1000
 
 #define LED          39
 
