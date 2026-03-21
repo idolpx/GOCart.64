@@ -197,7 +197,7 @@ void __time_critical_func(run_cart_magic_desk)(void) {
 
             DATA_OUT(rom_ptr[addr & 0x1FFF]);
             SET_DATA_MODE_OUT
-            wait_high(ROML);
+            wait_until(16);
             SET_DATA_MODE_IN
          }
 
@@ -217,9 +217,6 @@ void __time_critical_func(run_cart_magic_desk)(void) {
                c64_set_exrom_game(1, 1);
             }
          }
-         // test PRG
-         //if( !(control & IO2_MASK) && (addr == 0xDF1C) )
-         //   printf("D: %d\n", data);
       }
    }  // end loop
 }
@@ -252,8 +249,7 @@ void __time_critical_func(run_cart_ocean)(void) {
 
             DATA_OUT(rom_ptr[addr & 0x3FFF]);
             SET_DATA_MODE_OUT
-            wait_high(ROML);
-            wait_high(ROMH);
+            wait_until(16);
             SET_DATA_MODE_IN
          }
 
@@ -295,7 +291,7 @@ void __time_critical_func(run_cart_fun_play)(void) {
 
             DATA_OUT(rom_ptr[addr & 0x3FFF]);
             SET_DATA_MODE_OUT
-            wait_high(ROML);
+            wait_until(16);
             SET_DATA_MODE_IN
          }
 
@@ -345,8 +341,7 @@ void __time_critical_func(run_cart_super_games)(void) {
 
             DATA_OUT(rom_ptr[addr & 0x3FFF]);
             SET_DATA_MODE_OUT
-            wait_high(ROML);
-            wait_high(ROMH);
+            wait_until(16);
             SET_DATA_MODE_IN
          } 
 
@@ -377,7 +372,7 @@ void __time_critical_func(run_cart_easyflash)(void) {
    volatile uint32_t control;
    volatile uint32_t addr;
    volatile uint8_t data;
-   volatile uint8_t ram_buf[256];
+   volatile uint8_t ram_buf[256] = {};
    volatile uint8_t mode = 0;
    uint8_t ef_control[8][2] = {
       {1, 0},  // Ultimax
@@ -405,21 +400,21 @@ void __time_critical_func(run_cart_easyflash)(void) {
       addr = (control & ADDR_GPIO_MASK);
       COMPILER_BARRIER();
 
-      SET_DATA_MODE_IN
       if (control & RW_MASK) {
 
          if ((control & (ROML_MASK|ROMH_MASK)) != (ROML_MASK|ROMH_MASK)) {
 
             SET_DATA_MODE_OUT
             DATA_OUT(rom_ptr[addr & 0x3FFF]);
-            wait_high(ROML);
-            wait_high(ROMH);
+            wait_until(16);
+            SET_DATA_MODE_IN
 
          } else if ( !(control & IO2_MASK) ) {
             
             SET_DATA_MODE_OUT
             DATA_OUT(ram_buf[addr & 0xFF]);
-            wait_high(IO2);
+            wait_until(16);
+            SET_DATA_MODE_IN
          }
 
       } else {
@@ -438,7 +433,6 @@ void __time_critical_func(run_cart_easyflash)(void) {
                   c64_set_exrom_game(ef_control[mode][0], ef_control[mode][1]);
                   break;
             }
-
             wait_high(IO1);
          }
 
@@ -476,7 +470,7 @@ void __time_critical_func(run_cart_dinamic)(void) {
 
          DATA_OUT(rom_ptr[addr & 0x1fff]);
          SET_DATA_MODE_OUT
-         wait_high(ROML);
+         wait_until(16);
          SET_DATA_MODE_IN
 
       }  
@@ -516,7 +510,7 @@ void __time_critical_func(run_cart_zaxxon)(void) {
 
          DATA_OUT(rom0_ptr[addr & 0x0fff]);
          SET_DATA_MODE_OUT
-         wait_high(ROML);
+         wait_until(10);
          SET_DATA_MODE_IN
 
          rom_ptr = banks[addr & 0x1000 ? 1 : 0];
@@ -525,7 +519,7 @@ void __time_critical_func(run_cart_zaxxon)(void) {
 
          DATA_OUT(rom_ptr[addr & 0x3fff]);
          SET_DATA_MODE_OUT
-         wait_high(ROMH);
+         wait_until(10);
          SET_DATA_MODE_IN
       }
 

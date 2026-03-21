@@ -116,6 +116,14 @@ private:
          return false;
       exrom = bool(buf[0]);
       game = bool(buf[1]);
+
+      // fix Ocean bad EXROM/GAME
+      if(type == 5) {
+         exrom = game = 0;
+      } else if(type == 32) {   // fix EasyFlash bad EXROM/GAME
+         exrom = 1;
+         game =0;
+      }
       
       // skip reserved bytes
       if(!reader.read(buf, 6))
