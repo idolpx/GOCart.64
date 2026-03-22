@@ -1,7 +1,6 @@
 #include <stdio.h>      // printf
 #include "pico/stdlib.h"
 #include "pico/multicore.h"
-#include "hardware/structs/sio.h"
 
 #include "cartridge.h"
 #include "board.h"
@@ -10,7 +9,7 @@
 uint8_t crt_buf[CRT_BUFFER_SIZE] = {};
 uint8_t crt_map[64] = {};
 
-#define wait_until(t) { for(int i=0; i<t; i++) asm volatile("nop\n"); } // 4ns
+#define wait_until(t) { for(int i=0; i<t; i++) asm volatile("nop\n"); } // 3 ns for each nop (@330Mhz)
 
 #define CRT_BANK(bank)          (crt_buf + (uint32_t)(16 * 1024 * bank))
 
@@ -402,20 +401,30 @@ void __time_critical_func(run_cart_easyflash)(void) {
 
       if (control & RW_MASK) {
 
-         if ((control & (ROML_MASK|ROMH_MASK)) != (ROML_MASK|ROMH_MASK)) {
+         if (control & PHI2_MASK) {
 
-            SET_DATA_MODE_OUT
-            DATA_OUT(rom_ptr[addr & 0x3FFF]);
-            wait_until(16);
-            SET_DATA_MODE_IN
+            if ((control & (ROML_MASK|ROMH_MASK)) != (ROML_MASK|ROMH_MASK)) {
 
-         } else if ( !(control & IO2_MASK) ) {
-            
-            SET_DATA_MODE_OUT
-            DATA_OUT(ram_buf[addr & 0xFF]);
-            wait_until(16);
-            SET_DATA_MODE_IN
-         }
+               // value for wait_until: (1 = 3 ns @330MHz)
+               // 12 - 15 safe value for C64
+               // 16 - 20 safe value for C64C
+               //
+               // 12 (36ns) is good for C64 and C64C with check on PHI2
+               // btw Ultimax roms inside EF has issues (like KFF2)
+
+               SET_DATA_MODE_OUT
+               DATA_OUT(rom_ptr[addr & 0x3FFF]);
+               wait_until(12);
+               SET_DATA_MODE_IN
+
+            } else if ( !(control & IO2_MASK) ) {
+               
+               SET_DATA_MODE_OUT
+               DATA_OUT(ram_buf[addr & 0xFF]);
+               wait_until(12);
+               SET_DATA_MODE_IN
+            }
+         }  // end if PHI2_MASK
 
       } else {
          
@@ -499,28 +508,30 @@ void __time_critical_func(run_cart_zaxxon)(void) {
 
    /* uint32_t irqstatus = */ save_and_disable_interrupts();
 
-   SET_DATA_MODE_IN
    while(1) {
 
       GPIO_GET_LOW_32(control);
       addr = (control & ADDR_GPIO_MASK);
       COMPILER_BARRIER();
 
-      if( !(control & ROML_MASK) ) {
+      if( control & PHI2_MASK) {
 
-         DATA_OUT(rom0_ptr[addr & 0x0fff]);
-         SET_DATA_MODE_OUT
-         wait_until(10);
-         SET_DATA_MODE_IN
+         if( !(control & ROML_MASK) ) {
 
-         rom_ptr = banks[addr & 0x1000 ? 1 : 0];
+            DATA_OUT(rom0_ptr[addr & 0x0fff]);
+            SET_DATA_MODE_OUT
+            wait_until(16);
+            SET_DATA_MODE_IN
 
-      } else if( !(control & ROMH_MASK) ) {
+            rom_ptr = banks[addr & 0x1000 ? 1 : 0];
 
-         DATA_OUT(rom_ptr[addr & 0x3fff]);
-         SET_DATA_MODE_OUT
-         wait_until(10);
-         SET_DATA_MODE_IN
+         } else if( !(control & ROMH_MASK) ) {
+
+            DATA_OUT(rom_ptr[addr & 0x3fff]);
+            SET_DATA_MODE_OUT
+            wait_until(16);
+            SET_DATA_MODE_IN
+         }
       }
 
    }  // end loop
