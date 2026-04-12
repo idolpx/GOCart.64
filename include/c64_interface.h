@@ -22,4 +22,10 @@ inline void wait_high(int line) {
       tight_loop_contents();
 }
 
+inline void wait_high(int line, int ntry) {
+   int i=0;
+   while(!(sio_hw->gpio_in & (1u << line)) && i++<ntry)
+      tight_loop_contents();
+}
+
 #endif

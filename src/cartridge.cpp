@@ -174,13 +174,14 @@ void __time_critical_func(run_cart_normal)(void) {
       addr = (control & ADDR_GPIO_MASK);
       COMPILER_BARRIER();
 
-      if ( (control & PHI2_MASK) )
-         SET_DATA_MODE_IN
-
       if( !(control & ROML_MASK) || ( !(control & ROMH_MASK) ) ) {
 
          DATA_OUT(rom[addr & 0x3FFF]);
          SET_DATA_MODE_OUT
+         if (control & BA_MASK) {
+            wait_until(8);
+         }
+         SET_DATA_MODE_IN
       }
    } // end loop
 }
@@ -393,17 +394,7 @@ void __time_critical_func(run_cart_easyflash)(void) {
    volatile uint32_t addr;
    volatile uint8_t data;
    volatile uint8_t ram_buf[256] = {};
-   volatile uint8_t mode = 0;
-   uint8_t ef_control[8][2] = {
-      {1, 0},  // Ultimax
-      {1, 1},  // none
-      {0, 0},  // 16K
-      {0, 1},  // 8K
-      {1, 0},  // Ultimax
-      {1, 1},  // none
-      {0, 0},  // 16K
-      {0, 1}   // 8K
-   };
+   volatile bool exrom, game, dout;
 
    core1_args_t *p = (core1_args_t*) multicore_fifo_pop_blocking();
    uint8_t **banks = p->crt_banks;
@@ -416,38 +407,33 @@ void __time_critical_func(run_cart_easyflash)(void) {
 
    while(1) {
 
+      wait_high(PHI2);
+
       GPIO_GET_LOW_32(control);
       addr = (control & ADDR_GPIO_MASK);
       COMPILER_BARRIER();
 
       if (control & RW_MASK) {
 
-         if (control & PHI2_MASK) {
-         
-            if ((control & (ROML_MASK|ROMH_MASK)) != (ROML_MASK|ROMH_MASK)) {
+         dout = false;
 
-               SET_DATA_MODE_OUT
-               DATA_OUT(rom_ptr[addr & 0x3FFF]);
-               wait_until(12); 
-               SET_DATA_MODE_IN
+         if ((control & (ROML_MASK|ROMH_MASK)) != (ROML_MASK|ROMH_MASK)) {
 
-            } else if ( !(control & IO2_MASK) ) {
-               
-               SET_DATA_MODE_OUT
-               DATA_OUT(ram_buf[addr & 0xFF]);
-               wait_until(12);
-               SET_DATA_MODE_IN
-            }
+            SET_DATA_MODE_OUT
+            DATA_OUT(rom_ptr[addr & 0x3FFF]);
+            dout = true;
 
-         } else {
+         } else if ( !(control & IO2_MASK) ) {
+            
+            SET_DATA_MODE_OUT
+            DATA_OUT(ram_buf[addr & 0xFF]);
+            dout = true;
+         }
 
-            // Ultimax ROMs inside EF have ROMH low during PHI2 low front
-            if ( ( (mode == 0) || (mode == 4) ) && !(control & ROMH_MASK) ) {
-               SET_DATA_MODE_OUT
-               DATA_OUT(rom_ptr[addr & 0x3FFF]);
-               wait_until(8);
-               SET_DATA_MODE_IN
-            }
+         if (dout) {
+            wait_until(2);
+            SET_DATA_MODE_IN
+            dout = false;
          }
 
       } else {
@@ -462,17 +448,18 @@ void __time_critical_func(run_cart_easyflash)(void) {
                   break;
 
                case 0x02:
-                  mode = (((data >> 5) & 0x04) | (data & 0x02) | (((data >> 2) & 0x01) & ~data)) & 0x07;
-                  c64_set_exrom_game(ef_control[mode][0], ef_control[mode][1]);
+                  exrom = (~data & 0x2) >> 1;
+                  game = ~data & 0x1;
+                  c64_set_exrom_game(exrom, game);
                   break;
             }
-         } 
 
-         if (!(control & IO2_MASK)) {
+         } else if (!(control & IO2_MASK)) {
+            
             ram_buf[addr & 0xff] = data;
-            wait_high(IO2);      // required for C64 compatibility (games: Weird Dreams, ...)
          }
       }
+
    }  // end loop
 }
 
