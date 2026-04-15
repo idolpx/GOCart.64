@@ -21,8 +21,8 @@
 #define PINROMDATA   23 
 #define DATAWIDTH     8
 
-#define GAME         31    // inverted logic
-#define EXROM        32    // inverted logic
+#define NMI          31
+#define IRQ          32
 #define RESET        33    // inverted logic
 
 // SD pins
@@ -43,9 +43,19 @@
 #define I2C_SCL      41
 #define I2C_BAUDRATE 400000
 
+// SPI pins
+#define SPI_PORT     spi1
+#define SPI_MISO     40
+#define SPI_CS       41
+#define SPI_CLK      42
+#define SPI_MOSI     43
+
+#define GAME         44    // inverted logic
+#define EXROM        45    // inverted logic
+
 #define UART_ID      uart0
-#define UART_RX      45
 #define UART_TX      46
+#define UART_RX      47
 #define UART_BAUDRATE 115200
 
 #define RW_MASK      ((uint32_t)1 << RW)

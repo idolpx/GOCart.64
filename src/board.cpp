@@ -34,8 +34,8 @@ void board_setup(void) {
    stdio_uart_init_full(UART_ID, 115200, UART_TX, UART_RX);
 
    // configure PSRAM
-   gpio_set_function(PSRAM_CS, GPIO_FUNC_XIP_CS1); // CS for PSRAM
-	xip_ctrl_hw->ctrl |= XIP_CTRL_WRITABLE_M1_BITS;
+   //gpio_set_function(PSRAM_CS, GPIO_FUNC_XIP_CS1); // CS for PSRAM
+	//xip_ctrl_hw->ctrl |= XIP_CTRL_WRITABLE_M1_BITS;
 
    gpio_init(I2C_SDA);
    gpio_set_function(I2C_SDA, GPIO_FUNC_I2C);
@@ -74,6 +74,10 @@ void board_setup(void) {
    gpio_init(BA);
    gpio_disable_pulls(BA);
    gpio_set_dir(BA, GPIO_IN);
+
+   gpio_init(NMI);
+   gpio_set_dir(NMI, GPIO_OUT);
+   gpio_put(NMI, 1);
 
    gpio_init(LED);
    gpio_set_dir(LED, GPIO_OUT);

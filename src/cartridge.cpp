@@ -9,11 +9,29 @@
 #include "c64_interface.h"
 
 #include "board.h"
+#include "commands.h"
 
 uint8_t crt_buf[CRT_BUFFER_SIZE] = {};
 uint8_t crt_map[64] = {};
+volatile uint8_t kff_ram[256] = {};
 
 #define CRT_BANK(bank)          (crt_buf + (uint32_t)(16 * 1024 * bank))
+
+#define KFF_BUF   (CRT_BANK(16))
+
+// $de01 Command register in KFF RAM
+#define KFF_COMMAND (*((volatile uint8_t*)(kff_ram + 1)))
+
+// $de04-$de05 Read buffer pointer register in KFF RAM
+#define KFF_READ_PTR (*((uint16_t*)(kff_ram + 4)))
+
+// $de06-$de07 Write buffer pointer register in KFF RAM
+#define KFF_WRITE_PTR (*((uint16_t*)(kff_ram + 6)))
+
+// $de09 ID register in KFF RAM (same address as EF3 USB Control register)
+#define KFF_ID (*((uint8_t*)(kff_ram + 9)))
+
+#define KFF_ID_VALUE 0x2A
 
 // Fast look-up of 16k ROM bank address
 uint8_t *crt_banks[BANKS_NUM] = {
@@ -54,6 +72,41 @@ typedef struct {
     uint8_t **crt_banks;
     uint8_t *crt_map;
 } core1_args_t;
+
+void kff_init(void);
+
+uint8_t run_launcher(IDataReader &r) {
+
+   core1_args_t args;
+
+   multicore_reset_core1();
+
+   // init cart memory
+   memset(crt_buf, 0, sizeof(crt_buf));
+   memset(crt_map, 0, sizeof(crt_map));
+   for(uint16_t i=0; i<sizeof(kff_ram); i++)
+      kff_ram[i] = 0;
+
+   CRTParser *crt = new CRTParser(r, crt_buf, sizeof(crt_buf), crt_map, sizeof(crt_map));
+   if (crt->parse() != true) {
+      printf("E: CRT parsing error\n");
+      return 1;
+   }
+
+   printf("name: %s\n", crt->getName());
+   printf("EXROM: %d, GAME: %d\n", crt->getExrom(), crt->getGame());
+   c64_set_exrom_game(crt->getExrom(), crt->getGame());
+   printf("CRT size: %ld\n", crt->getSize());
+
+   printf("cart: Launcher\n");
+   kff_init();
+   args.crt_buf = crt_buf;
+   multicore_launch_core1(run_cart_kff);
+   multicore_fifo_push_blocking((uint32_t)&args);
+
+   printf("done\n");
+   return 0;
+}
 
 uint8_t run_cart(IDataReader &r) {
 
@@ -403,7 +456,13 @@ void __time_critical_func(run_cart_easyflash)(void) {
 
    c64_reset();
 
+   m33_hw->demcr |= 0x01000000; // DEMCR "TRCENA" control bit set -> Enable the trace block
+   m33_hw->dwt_ctrl |= 1; // DWT "CYCCNTENA" control bit set -> Enable the CYCCNT cycle counter
+
    /* uint32_t irqstatus = */ save_and_disable_interrupts();
+
+   // prepare for rising edge
+   wait_low(PHI2);
 
    while(1) {
 
@@ -540,6 +599,139 @@ void __time_critical_func(run_cart_zaxxon)(void) {
             SET_DATA_MODE_OUT
          }
       }
+   }  // end loop
+}
+
+//
+
+void __time_critical_func(kff_set_command)(uint8_t cmd) {
+   KFF_READ_PTR = 0;
+   KFF_WRITE_PTR = 0;
+   COMPILER_BARRIER();
+   KFF_COMMAND = cmd;
+}
+
+bool __time_critical_func(kff_get_reply)(uint8_t cmd, uint8_t *reply) {
+   *reply = KFF_COMMAND;
+   if (cmd != *reply) {
+       KFF_READ_PTR = 0;
+       KFF_WRITE_PTR = 0;
+       return true;
+   }
+   return false;
+}
+
+uint8_t __time_critical_func(kff_receive_byte)(void){
+   return KFF_BUF[KFF_READ_PTR++];
+}
+
+void __time_critical_func(kff_send_byte)(uint8_t data) {
+   KFF_BUF[KFF_WRITE_PTR++] = data;
+}
+
+void __time_critical_func(kff_init(void)) {
+   c64_set_exrom_game(1, 0);     // Ultimax
+   KFF_ID = KFF_ID_VALUE;
+   kff_set_command(0x00);     // CMD_NONE
+}
+
+//
+
+void kff_dump(void) {
+   uint16_t i = 0;
+
+   printf("KFF_RAM\n");
+   for(i=0; i<sizeof(kff_ram); i++)
+      printf("%d) 0x%X [%c]\n", i, kff_ram[i], kff_ram[i]);
+   printf("KFF_BUF\n");
+   for(i=0; i<200; i++)
+      printf("%d) 0x%X [%c]\n", i, KFF_BUF[i], KFF_BUF[i]);
+
+   printf("KFF_READ_PTR: 0x%d\n", KFF_READ_PTR);
+   printf("KFF_WRITE_PTR: 0x%d\n", KFF_WRITE_PTR);
+}
+
+__attribute__((optimize("O3"), hot))
+void __time_critical_func(run_cart_kff)(void) {
+
+   volatile uint32_t control;
+   volatile uint32_t addr;
+   volatile uint8_t data;
+
+   core1_args_t *p = (core1_args_t*) multicore_fifo_pop_blocking();
+   uint8_t *rom = p->crt_buf;
+
+   c64_reset();
+
+   /* uint32_t irqstatus = */ save_and_disable_interrupts();
+
+   // prepare for rising edge
+   wait_low(PHI2);
+
+   while(1) {
+
+      wait_high(PHI2);
+
+      GPIO_GET_LOW_32(control);
+      addr = (control & ADDR_GPIO_MASK);
+      COMPILER_BARRIER();
+
+      if (control & RW_MASK) {
+
+         if ((control & (ROML_MASK|ROMH_MASK)) != (ROML_MASK|ROMH_MASK)) {
+
+            SET_DATA_MODE_OUT
+            DATA_OUT(rom[addr & 0x3FFF]);
+            if (control & BA_MASK) {
+               wait_until(2);
+            }
+            SET_DATA_MODE_IN
+
+         } else if ( !(control & IO1_MASK) ) {
+
+            switch (addr & 0xFF) {
+
+               case 0x00:
+                  SET_DATA_MODE_OUT
+                  DATA_OUT(KFF_BUF[KFF_READ_PTR++]);  // de00 data register
+                  wait_low(PHI2);
+                  SET_DATA_MODE_IN
+                  break;
+           
+               default:
+                  SET_DATA_MODE_OUT
+                  DATA_OUT(kff_ram[addr & 0xFF]);
+                  wait_low(PHI2);
+                  SET_DATA_MODE_IN
+                  break;
+            }
+         }
+
+      } else {
+        
+         data = DATA_IN;
+         if( !(control & IO1_MASK) ) {
+
+            switch (addr & 0xff) {
+
+               case 0x00:     // $de00 data register
+                  KFF_BUF[KFF_WRITE_PTR++] = data;
+                  break;
+
+               case 0x02:     // $de02 control register
+                  if (data & 0x01) {
+                     c64_set_exrom_game(0, 0);     // 16K ROM
+                  } else {
+                     c64_set_exrom_game(1, 1);     // none
+                  }
+                  break;
+
+               default:
+                  kff_ram[addr & 0xFF] = data;
+                  break;
+            }
+         }
+      }  // end if RW
    }  // end loop
 }
 

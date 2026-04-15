@@ -4,6 +4,7 @@
 
 #include <vector>
 #include <cstring>
+#include <cstdio>
 
 #define NEXT_CHIP    2
 

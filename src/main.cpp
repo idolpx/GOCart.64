@@ -21,11 +21,11 @@
 #include "FileReader.h"
 #include "BufferReader.h"
 #include "CRTParser.h"
+#include "commands.h"
 
 #define CMD_BUFFER_SIZE 64
 
 void run_shell(void);
-void run_read_test(void);
 
 int main(void) {
    
@@ -46,7 +46,6 @@ int main(void) {
    i2c_init_regspace();
 
    run_shell();
-   //run_read_test();
 
    return 0;
 }
@@ -102,6 +101,37 @@ void run_shell(void) {
                } else {
                   printf("reset [c64 | pico]\n");
                }
+            } else if (strcmp(token, "run") == 0) {
+               FileReader fr("/kff.crt");
+               if(fr.eof())
+                  printf("E: launcher not found\n");
+               else
+                  run_launcher(fr);
+            } else if (strcmp(token, "none") == 0) {
+               c64_send_command(CMD_NONE);
+            } else if (strcmp(token, "wait") == 0) {
+               c64_send_command(CMD_WAIT_SYNC);
+            } else if (strcmp(token, "warn") == 0) {
+               c64_send_warning("warning");
+            } else if (strcmp(token, "sync") == 0) {
+               c64_send_command(CMD_SYNC);
+            } else if (strcmp(token, "menu") == 0) {
+               //c64_send_command(CMD_MENU);
+               char search[32];
+               uint8_t reply;
+               c64_set_command(CMD_MENU);
+               while (!c64_get_reply(CMD_MENU, &reply)) ;
+               c64_receive_string(search);
+               convert_to_ascii(search, (uint8_t *)search, 32);
+               printf("reply: %x, search: %s\n", reply, search);
+            } else if (strcmp(token, "prog") == 0) {
+               c64_send_prg_message("c64_send_prg_message");
+            } else if (strcmp(token, "text") == 0) {
+               int cnt=0;
+               while (cnt++ < 300)
+                  c64_send_message("c64_send_message");
+            } else if (strcmp(token, "dump") == 0) {
+               kff_dump();
             } else if (strcmp(token, "load") == 0) {
                // load file
                // parameter: <filename>
@@ -199,43 +229,3 @@ void run_shell(void) {
       }
    }
 }
-
-void run_read_test(void) {
-
-   volatile uint32_t control;
-   volatile uint16_t addr;
-
-   uint8_t arr[300];
-   int i = 0;
-
-   SET_DATA_MODE_IN
-   while(1) {
-
-      GPIO_GET_LOW_32(control);
-      addr = (control & ADDR_GPIO_MASK);
-      COMPILER_BARRIER();
-
-      if (control & RW_MASK) {
-
-      } else {
-
-         // 0xDF1C  --  POKE 57116,2
-         // 10 FOR X=1 to 255
-         // 20 POKE 57116, X
-         // 30 NEXT X
-         // 40 POKE 57117, 1
-
-         if ( !(control & IO2_MASK) ) {
-            if (addr == 0xDF1C) {
-               arr[i++] = DATA_IN;
-            } else if (addr == 0xDF1D) {
-               for(int b=0; b<i; b++)
-                  printf("%d) %d\n", b, arr[b]);
-               i = 0;
-            }
-            wait_high(IO2);
-         }
-      }
-   } // end loop
-}
-
