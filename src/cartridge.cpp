@@ -79,7 +79,7 @@ typedef struct {
 
 void kff_init(void);
 
-uint8_t run_launcher(IDataReader &r) {
+uint8_t run_launcher(void) {
 
    core1_args_t args;
 

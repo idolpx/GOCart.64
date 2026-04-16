@@ -100,11 +100,7 @@ void run_shell(void) {
                   printf("reset [c64 | pico]\n");
                }
             } else if (strcmp(token, "run") == 0) {
-               FileReader fr("/kff.crt");
-               if(fr.eof())
-                  printf("E: launcher not found\n");
-               else
-                  run_launcher(fr);
+               run_launcher();
             } else if (strcmp(token, "none") == 0) {
                c64_send_command(CMD_NONE);
             } else if (strcmp(token, "wait") == 0) {
