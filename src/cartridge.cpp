@@ -14,8 +14,12 @@
 uint8_t crt_buf[CRT_BUFFER_SIZE] = {};
 uint8_t crt_map[64] = {};
 volatile uint8_t kff_ram[256] = {};
+extern uint8_t __flash_binary_end[];
 
-#define CRT_BANK(bank)          (crt_buf + (uint32_t)(16 * 1024 * bank))
+#define CRT_BANK(bank)     (crt_buf + (uint32_t)(16 * 1024 * bank))
+
+#define CRT_LAUNCHER       ((uint8_t *)__flash_binary_end)
+#define CRT_LAUNCHER_SIZE  16384
 
 #define KFF_BUF   (CRT_BANK(16))
 
@@ -87,19 +91,11 @@ uint8_t run_launcher(IDataReader &r) {
    for(uint16_t i=0; i<sizeof(kff_ram); i++)
       kff_ram[i] = 0;
 
-   CRTParser *crt = new CRTParser(r, crt_buf, sizeof(crt_buf), crt_map, sizeof(crt_map));
-   if (crt->parse() != true) {
-      printf("E: CRT parsing error\n");
-      return 1;
-   }
-
-   printf("name: %s\n", crt->getName());
-   printf("EXROM: %d, GAME: %d\n", crt->getExrom(), crt->getGame());
-   c64_set_exrom_game(crt->getExrom(), crt->getGame());
-   printf("CRT size: %ld\n", crt->getSize());
+   memcpy(crt_buf, CRT_LAUNCHER, CRT_LAUNCHER_SIZE);
 
    printf("cart: Launcher\n");
    kff_init();
+   c64_set_exrom_game(1, 0);
    args.crt_buf = crt_buf;
    multicore_launch_core1(run_cart_kff);
    multicore_fifo_push_blocking((uint32_t)&args);

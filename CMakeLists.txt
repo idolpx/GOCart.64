@@ -7,7 +7,8 @@ set(PICO_PLATFORM rp2350)
 # set boards directory
 set(PICO_BOARD_HEADER_DIRS ${CMAKE_CURRENT_LIST_DIR}/boards)
 
-include(/usr/share/pico-sdk/pico_sdk_init.cmake)
+set(PICO_SDK_PATH /usr/share/pico-sdk)
+include(${PICO_SDK_PATH}/pico_sdk_init.cmake)
 
 project(${PROJECT} C CXX ASM)
 
@@ -75,3 +76,22 @@ pico_enable_stdio_uart(${PROJECT} 1)
 
 # create map/bin/hex file etc.
 pico_add_extra_outputs(${PROJECT})
+
+# create .bin file with launcher
+add_custom_command(
+   TARGET ${PROJECT} POST_BUILD
+   COMMAND ${CMAKE_COMMAND} -E cat
+            ${CMAKE_BINARY_DIR}/${PROJECT}.bin
+            ${CMAKE_SOURCE_DIR}/launcher/build/launcher.bin
+            > ${CMAKE_BINARY_DIR}/${PROJECT}.img.bin
+)
+
+# create .uf2 file with launcher
+add_custom_command(
+   TARGET ${PROJECT} POST_BUILD
+   COMMAND uf2conv
+            ${CMAKE_BINARY_DIR}/${PROJECT}.img.bin
+            -o ${CMAKE_BINARY_DIR}/${PROJECT}.img.uf2
+            -b 0x10000000
+)
+
