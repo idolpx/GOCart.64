@@ -3,10 +3,10 @@
 #include <cstring>      // memcpy
 #include <cstdint>
 #include "pico/stdlib.h"
-#include "pico/i2c_slave.h"
 
 #include "board.h"
 #include "cartridge.h"
+#include "i2c_handler.h"
 
 #define SOF          0xAA
 #define FRAME_ERR    0xC0

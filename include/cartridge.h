@@ -42,6 +42,10 @@ typedef struct {
 
 #define COMPILER_BARRIER() asm volatile("" ::: "memory")
 
+void launcher_enable(void);
+void launcher_disable(void);
+bool launcher_running(void);
+
 uint8_t run_cart(IDataReader &r);
 uint8_t run_launcher(void);
 

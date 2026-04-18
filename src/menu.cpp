@@ -22,6 +22,8 @@
 #include "menu_sd.h"
 #include "menu_options.h"
 #include "file_types.h"
+#include "shell.h"
+#include "cartridge.h"
 
 //
 const MENU *menu;
@@ -37,13 +39,16 @@ void menu_loop(void) {
    uint8_t cmd = CMD_MENU;
    //bool should_save_cfg = true;
 
-   while (true) {
+   while (launcher_running()) {
 
-      printf("c64_set_command - cmd: 0x%X\n", cmd);
+      //printf("c64_set_command - cmd: 0x%X\n", cmd);
       c64_set_command(cmd);
       uint8_t reply;
       while (!c64_get_reply(cmd, &reply)) {
       
+         // keep shell alive
+         poll_shell();
+
          /*
          if (usb_gotc()) {
             cfg_file.boot_type = CFG_USB;
@@ -66,37 +71,37 @@ void menu_loop(void) {
             break;
 
          case REPLY_DIR:
-            printf("menu: waiting for search string...\n");
+            //printf("menu: waiting for search string...\n");
             c64_receive_string(search);
             convert_to_ascii(search, (uint8_t *)search, SEARCH_LENGTH+1);
             cmd = menu->dir(menu->state);
-            printf("menu_loop: menu->dir, search: %s, goto cmd: %d\n", search, cmd);
+            //printf("menu_loop: menu->dir, search: %s, goto cmd: %d\n", search, cmd);
             break;
 
          case REPLY_DIR_ROOT:
             cmd = menu->dir_up(menu->state, true);
-            printf("menu_loop: menu->dir_root\n");
+            //printf("menu_loop: menu->dir_root\n");
             break;
 
          case REPLY_DIR_UP:
             cmd = menu->dir_up(menu->state, false);
-            printf("menu_loop: menu->dir_up\n");
+            //printf("menu_loop: menu->dir_up\n");
             break;
 
          case REPLY_DIR_PREV_PAGE:
             cmd = menu->prev_page(menu->state);
-            printf("menu_loop: menu->prev_page\n");
+            //printf("menu_loop: menu->prev_page\n");
             break;
 
          case REPLY_DIR_NEXT_PAGE:
             cmd = menu->next_page(menu->state);
-            printf("menu_loop: menu->next_page\n");
+            //printf("menu_loop: menu->next_page\n");
             break;
 
          case REPLY_SELECT:
             data = c64_receive_byte();
             cmd = menu->select(menu->state, data & 0xc0, data & 0x3f);
-            printf("menu_loop: menu->select\n");
+            //printf("menu_loop: menu->select\n");
             break;
 
          /*
@@ -132,11 +137,6 @@ void menu_loop(void) {
             cmd = CMD_NONE;
             break;
       }
-
-      /*
-      if (!c64_interface_active())
-         break;
-      */
    }
 
    /*

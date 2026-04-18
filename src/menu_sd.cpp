@@ -247,8 +247,6 @@ uint8_t sd_handle_dir(SD_STATE *state) {
    //if (sd_crt_updated(state))
    //   return handle_unsaved_crt(cfg_file.file, sd_handle_save_updated_crt);
    
-   printf("in sd_handle_dir()\n");
-
    sd_dir_open(state);
 
    dir_current(cfg_file.path, sizeof(cfg_file.path));

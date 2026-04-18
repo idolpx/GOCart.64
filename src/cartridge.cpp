@@ -51,6 +51,22 @@ uint8_t *crt_banks[BANKS_NUM] = {
 
 void kff_init(void);
 
+static bool _launcher_state = false;
+
+void launcher_enable(void) {
+   printf("launcher: ON\n");
+   _launcher_state = true;
+}
+
+void launcher_disable(void) {
+   printf("launcher: OFF\n");
+   _launcher_state = false;
+}
+
+bool launcher_running(void) {
+   return _launcher_state;
+}
+
 uint8_t run_launcher(void) {
 
    core1_args_t args;
@@ -65,10 +81,11 @@ uint8_t run_launcher(void) {
 
    memcpy(crt_buf, CRT_LAUNCHER, CRT_LAUNCHER_SIZE);
 
-   printf("cart: Launcher\n");
+   printf("\ncart: Launcher\n");
    kff_init();
    c64_set_exrom_game(1, 0);
    args.crt_buf = crt_buf;
+   launcher_enable();
    multicore_launch_core1(run_cart_kff);
    multicore_fifo_push_blocking((uint32_t)&args);
 
@@ -90,10 +107,13 @@ uint8_t run_cart(IDataReader &r) {
       return 1;
    }
 
-   printf("name: %s\n", crt->getName());
+   printf("\nname: %s\n", crt->getName());
    printf("EXROM: %d, GAME: %d\n", crt->getExrom(), crt->getGame());
    c64_set_exrom_game(crt->getExrom(), crt->getGame());
    printf("CRT size: %ld\n", crt->getSize());
+
+   // exit from launcher
+   launcher_disable();
 
    switch(crt->getType()) {
 
