@@ -6,6 +6,7 @@
 #include "pico/i2c_slave.h"
 
 #include "board.h"
+#include "cartridge.h"
 
 #define SOF          0xAA
 #define FRAME_ERR    0xC0

@@ -1,6 +1,24 @@
 #ifndef COMMAND_H_
 #define COMMAND_H_
 
+#include <stdlib.h>
+
+#define ELEMENT_LENGTH 39
+#define DIR_NAME_LENGTH 39
+#define MAX_ELEMENTS_PAGE 23
+#define SEARCH_LENGTH 30
+
+// Use non-breaking spaces as first character in dir name
+#define NORMAL_DIR       0x20
+#define SEARCH_SUPPORTED 0xa0
+#define CLEAR_SEARCH     0xe0
+
+// Use non-breaking spaces as first character for element type
+#define NORMAL_ELEMENT   0x20
+#define SELECTED_ELEMENT 0xa0
+#define TEXT_ELEMENT     0xe0
+
+
 typedef enum {
     CMD_NONE = 0x00,    // Get reply from C64
 

@@ -1,4 +1,3 @@
-
 #include <stdio.h>
 #include <string.h>
 #include <cstdlib>      // free
@@ -23,6 +22,7 @@
 #include "CRTParser.h"
 #include "commands.h"
 #include "filesystem.h"
+#include "menu.h"
 
 #define CMD_BUFFER_SIZE 64
 
@@ -99,8 +99,6 @@ void run_shell(void) {
                } else {
                   printf("reset [c64 | pico]\n");
                }
-            } else if (strcmp(token, "run") == 0) {
-               run_launcher();
             } else if (strcmp(token, "none") == 0) {
                c64_send_command(CMD_NONE);
             } else if (strcmp(token, "wait") == 0) {
@@ -110,14 +108,8 @@ void run_shell(void) {
             } else if (strcmp(token, "sync") == 0) {
                c64_send_command(CMD_SYNC);
             } else if (strcmp(token, "menu") == 0) {
-               //c64_send_command(CMD_MENU);
-               char search[32];
-               uint8_t reply;
-               c64_set_command(CMD_MENU);
-               while (!c64_get_reply(CMD_MENU, &reply)) ;
-               c64_receive_string(search);
-               convert_to_ascii(search, (uint8_t *)search, 32);
-               printf("reply: %x, search: %s\n", reply, search);
+               run_launcher();
+               menu_loop();
             } else if (strcmp(token, "prog") == 0) {
                c64_send_prg_message("c64_send_prg_message");
             } else if (strcmp(token, "text") == 0) {
@@ -200,8 +192,6 @@ void run_shell(void) {
                printf("XIP_BASE address: 0x%X\n", XIP_BASE);
                extern uint8_t crt_buf[CRT_BUFFER_SIZE];
                printf("max CRT size: %d bytes\n", sizeof(crt_buf));
-            } else if (strcmp(token, "run") == 0) {
-               //run_cart(NULL, false);
             } else if (strlen(cmd_buffer) == 0) {
                printf("%s:> ", path);
                continue;

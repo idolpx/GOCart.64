@@ -32,6 +32,7 @@ void c64_receive_data(void *buffer, size_t size) {
       uint8_t c = c64_receive_byte();
       *buf_ptr++ = c;
    }
+   printf("c64_receive_data - buffer: %s, size: %d\n", (char *)buffer, size);
 }
 
 void c64_send_data(const void *buffer, size_t size) {

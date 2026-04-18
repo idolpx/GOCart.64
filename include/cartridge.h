@@ -1,10 +1,44 @@
 #ifndef CARTRIDGE_H
 #define CARTRIDGE_H
 
+#include "board.h"
 #include "FileReader.h"
 #include "BufferReader.h"
 #include "Reader.h"
 #include "CRTParser.h"
+
+#define BANKS_NUM          30
+#define CRT_BUFFER_SIZE    (BANKS_NUM * 16 * 1024)
+
+extern uint8_t crt_buf[CRT_BUFFER_SIZE];
+
+#define CRT_BANK(bank)     (crt_buf + (uint32_t)(16 * 1024 * bank))
+
+extern uint8_t __flash_binary_end[];
+#define CRT_LAUNCHER       ((uint8_t *)__flash_binary_end)
+#define CRT_LAUNCHER_SIZE  16384
+
+#define KFF_BUF   (CRT_BANK(16))
+
+// $de01 Command register in KFF RAM
+#define KFF_COMMAND (*((volatile uint8_t*)(kff_ram + 1)))
+
+// $de04-$de05 Read buffer pointer register in KFF RAM
+#define KFF_READ_PTR (*((uint16_t*)(kff_ram + 4)))
+
+// $de06-$de07 Write buffer pointer register in KFF RAM
+#define KFF_WRITE_PTR (*((uint16_t*)(kff_ram + 6)))
+
+// $de09 ID register in KFF RAM (same address as EF3 USB Control register)
+#define KFF_ID (*((uint8_t*)(kff_ram + 9)))
+
+#define KFF_ID_VALUE 0x2A
+
+typedef struct {
+    uint8_t *crt_buf;
+    uint8_t **crt_banks;
+    uint8_t *crt_map;
+} core1_args_t;
 
 #define COMPILER_BARRIER() asm volatile("" ::: "memory")
 

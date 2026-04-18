@@ -14,28 +14,6 @@
 uint8_t crt_buf[CRT_BUFFER_SIZE] = {};
 uint8_t crt_map[64] = {};
 volatile uint8_t kff_ram[256] = {};
-extern uint8_t __flash_binary_end[];
-
-#define CRT_BANK(bank)     (crt_buf + (uint32_t)(16 * 1024 * bank))
-
-#define CRT_LAUNCHER       ((uint8_t *)__flash_binary_end)
-#define CRT_LAUNCHER_SIZE  16384
-
-#define KFF_BUF   (CRT_BANK(16))
-
-// $de01 Command register in KFF RAM
-#define KFF_COMMAND (*((volatile uint8_t*)(kff_ram + 1)))
-
-// $de04-$de05 Read buffer pointer register in KFF RAM
-#define KFF_READ_PTR (*((uint16_t*)(kff_ram + 4)))
-
-// $de06-$de07 Write buffer pointer register in KFF RAM
-#define KFF_WRITE_PTR (*((uint16_t*)(kff_ram + 6)))
-
-// $de09 ID register in KFF RAM (same address as EF3 USB Control register)
-#define KFF_ID (*((uint8_t*)(kff_ram + 9)))
-
-#define KFF_ID_VALUE 0x2A
 
 // Fast look-up of 16k ROM bank address
 uint8_t *crt_banks[BANKS_NUM] = {
@@ -70,12 +48,6 @@ uint8_t *crt_banks[BANKS_NUM] = {
    CRT_BANK(28),
    CRT_BANK(29)
 };
-
-typedef struct {
-    uint8_t *crt_buf;
-    uint8_t **crt_banks;
-    uint8_t *crt_map;
-} core1_args_t;
 
 void kff_init(void);
 
@@ -726,6 +698,7 @@ void __time_critical_func(run_cart_kff)(void) {
                   kff_ram[addr & 0xFF] = data;
                   break;
             }
+            wait_high(IO1);
          }
       }  // end if RW
    }  // end loop
