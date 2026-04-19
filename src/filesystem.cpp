@@ -117,8 +117,7 @@ bool dir_change(const char *path) {
    return res == FR_OK;
 }
 
-bool dir_current(char *path, size_t path_size)
-{
+bool dir_current(char *path, size_t path_size) {
    FRESULT res = f_getcwd(path, path_size);
 
    return res == FR_OK;
