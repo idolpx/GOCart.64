@@ -620,7 +620,7 @@ void __time_critical_func(kff_send_byte)(uint8_t data) {
 void __time_critical_func(kff_init(void)) {
    c64_set_exrom_game(1, 0);     // Ultimax
    KFF_ID = KFF_ID_VALUE;
-   kff_set_command(0x00);     // CMD_NONE
+   kff_set_command(CMD_NONE);
 }
 
 //

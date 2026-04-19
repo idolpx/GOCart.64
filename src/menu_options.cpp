@@ -25,7 +25,7 @@
 #include "menu.h"
 #include "cartridge.h"
 
-#define scratch_buf  ((char *)CRT_BANK(10))    // 16 kb
+#define scratch_buf  ((char *)CRT_BANK(1))    // 16 kb
 
 extern const MENU *menu;
 

@@ -27,7 +27,7 @@
 #include "menu.h"
 
 extern uint8_t *crt_banks[BANKS_NUM];
-#define scratch_buf  ((char *)CRT_BANK(10))    // 16 kb
+#define scratch_buf  ((char *)CRT_BANK(1))    // 16 kb
 
 typedef struct {
    bool in_root;

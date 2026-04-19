@@ -27,7 +27,7 @@
 
 //
 const MENU *menu;
-static CFG_FILE cfg_file;
+CFG_FILE cfg_file;
 extern uint8_t kff_ram[256];
 //
 

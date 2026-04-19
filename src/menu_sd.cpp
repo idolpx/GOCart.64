@@ -30,7 +30,7 @@
 #include "cartridge.h"
 
 //
-static CFG_FILE cfg_file;
+extern CFG_FILE cfg_file;
 //
 
 void sd_format_size(char *buffer, uint32_t size) {

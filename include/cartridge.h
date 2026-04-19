@@ -18,7 +18,7 @@ extern uint8_t __flash_binary_end[];
 #define CRT_LAUNCHER       ((uint8_t *)__flash_binary_end)
 #define CRT_LAUNCHER_SIZE  16384
 
-#define KFF_BUF   (CRT_BANK(16))
+#define KFF_BUF   (CRT_BANK(0))
 
 // $de01 Command register in KFF RAM
 #define KFF_COMMAND (*((volatile uint8_t*)(kff_ram + 1)))

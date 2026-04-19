@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <stdlib.h>     // qsort
 #include <string.h>
 #include "pico/stdlib.h"
 #include "hardware/watchdog.h"
@@ -15,6 +16,22 @@
 #define CMD_BUFFER_SIZE    128
 
 static char path[32];
+
+int cmp_filename(const void *a, const void *b) {
+   const FILINFO *fa = (FILINFO *)a;
+   const FILINFO *fb = (FILINFO *)b;
+
+   int da = (fa->fattrib & AM_DIR) != 0;
+   int db = (fb->fattrib & AM_DIR) != 0;
+
+   if (da != db)
+      return db - da;
+
+   const char *na = fa->fname;
+   const char *nb = fb->fname;
+
+   return strcmp(na, nb);
+}
 
 void print_prompt(bool init=false) {
 
@@ -96,6 +113,26 @@ void poll_shell(void) {
                printf("E: file not found (%s)\n", prev_path);
             else
                run_cart(fr);
+         } else if (strcmp(token, "lss") == 0) {
+            // list files/directories
+            FILINFO *file_list = (FILINFO *)(crt_buf + 3*16*1024); // start from CRT_BANK(2)
+            dir_open(&dir, "*");
+            int fnum=0;
+            while(dir_read(&dir, &fno)) {
+               if(fno.fname[0] == 0)
+                  break;
+               memcpy(&file_list[fnum], &fno, sizeof(FILINFO));
+               fnum++;
+            }
+            dir_close(&dir);
+            qsort(file_list, fnum, sizeof(FILINFO), cmp_filename);
+            for(int i=0; i<fnum; i++) {
+               fno = file_list[i];
+               if (fno.fattrib & AM_DIR)
+                  printf("[DIR] %s\n", fno.fname);
+               else
+                  printf("[FILE] %s (%llu bytes)\n", fno.fname, fno.fsize);
+            }
          } else if (strcmp(token, "ls") == 0) {
             // list files/directories
             dir_open(&dir, "*");
