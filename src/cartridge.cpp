@@ -444,9 +444,6 @@ void __time_critical_func(run_cart_easyflash)(void) {
 
    c64_reset();
 
-   m33_hw->demcr |= 0x01000000; // DEMCR "TRCENA" control bit set -> Enable the trace block
-   m33_hw->dwt_ctrl |= 1; // DWT "CYCCNTENA" control bit set -> Enable the CYCCNT cycle counter
-
    /* uint32_t irqstatus = */ save_and_disable_interrupts();
 
    // prepare for rising edge
@@ -478,7 +475,13 @@ void __time_critical_func(run_cart_easyflash)(void) {
          }
 
          if (dout) {
-            wait_until(2);
+            //wait_until(1);        // C64 runs, C64C: fails on some games
+            
+            asm volatile("nop\n");  // runs for C64 and C64C (!)
+            asm volatile("nop\n");
+            
+            //wait_until(2);          // C64: runs,  C64C: fails on some games
+            //wait_low(PHI2);       // C64: always fails, C64C: runs
             SET_DATA_MODE_IN
             dout = false;
          }
