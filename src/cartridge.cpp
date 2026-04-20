@@ -123,6 +123,7 @@ uint8_t run_cart(IDataReader &r) {
          // normal cartridge (0)
          printf("cart: 8K, 16K, Ultimax\n");
          args.crt_buf = crt_buf;
+         //multicore_launch_core1(run_cart_normal_vic);
          multicore_launch_core1(run_cart_normal);
          multicore_fifo_push_blocking((uint32_t)&args);
          break;
@@ -192,6 +193,95 @@ uint8_t run_cart(IDataReader &r) {
 
    printf("done\n");
    return 0;
+}
+
+//
+
+/*
+ * test routine to implement VIC cycle
+ */
+
+//__attribute__((optimize("O2")))
+void __time_critical_func(run_cart_normal_vic)(void) {
+
+   volatile uint32_t control;
+   volatile uint32_t addr;
+   int phi2_mask = (1u << PHI2);
+
+   core1_args_t *p = (core1_args_t*) multicore_fifo_pop_blocking();
+   uint8_t *rom = p->crt_buf;
+
+   m33_hw->demcr |= 0x01000000; // DEMCR "TRCENA" control bit set -> Enable the trace block
+   m33_hw->dwt_ctrl |= 1; // DWT "CYCCNTENA" control bit set -> Enable the CYCCNT cycle counter
+
+   c64_reset();
+
+   /* uint32_t irqstatus = */ save_and_disable_interrupts();
+
+   SET_DATA_MODE_IN
+   while(1) {
+
+      while(!(sio_hw->gpio_in & phi2_mask));
+
+      GPIO_GET_LOW_32(control);
+      addr = (control & ADDR_GPIO_MASK);
+      COMPILER_BARRIER();
+
+      m33_hw->dwt_cyccnt = 0;
+
+      /* Check if CPU has the bus (no bad line) */
+      if ((control & (BA_MASK|RW_MASK)) == (BA_MASK|RW_MASK)) {
+
+         if ((control & (ROML_MASK|ROMH_MASK)) != (ROML_MASK|ROMH_MASK)) {
+
+            DATA_OUT(rom[addr & 0x3FFF]);
+            SET_DATA_MODE_OUT
+            while(sio_hw->gpio_in & phi2_mask)
+               tight_loop_contents();          // ** 1 ** //
+            //while(!(sio_hw->gpio_in & roml_mask));
+            //while(!(sio_hw->gpio_in & romh_mask));
+            SET_DATA_MODE_IN
+         }
+      } else if (!(control & RW_MASK)) {  
+
+         ;
+
+      } else {       /* VIC-II has the bus */             
+
+         //GPIO_GET_LOW_32(control);
+         if ((control & (ROML_MASK|ROMH_MASK)) != (ROML_MASK|ROMH_MASK)) {
+
+            DATA_OUT(addr);
+            SET_DATA_MODE_OUT
+            while(sio_hw->gpio_in & phi2_mask)
+               tight_loop_contents();          // ** 2 ** //
+            //while(!(sio_hw->gpio_in & roml_mask));
+            //while(!(sio_hw->gpio_in & romh_mask));
+            SET_DATA_MODE_IN
+         }
+      }
+
+      /* Wait for VIC-II cycle */
+      //while(sio_hw->gpio_in & phi2_mask)
+      //   tight_loop_contents();          // ** 1 ** //
+
+      addr = ADDR_IN;
+      COMPILER_BARRIER();
+      //rom[addr & 0x3FFF];     // Speculative read
+      GPIO_GET_LOW_32(control);
+      if ((control & (ROML_MASK|ROMH_MASK)) != (ROML_MASK|ROMH_MASK)) {
+
+            DATA_OUT(addr);
+            SET_DATA_MODE_OUT
+            //while(!(sio_hw->gpio_in & phi2_mask))
+            //   tight_loop_contents();       // ** 3 ** //
+            //while(!(sio_hw->gpio_in & roml_mask));
+            //while(!(sio_hw->gpio_in & romh_mask));
+            SET_DATA_MODE_IN
+      }
+      COMPILER_BARRIER();
+
+   } // end loop
 }
 
 //

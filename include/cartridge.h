@@ -50,6 +50,7 @@ uint8_t run_cart(IDataReader &r);
 uint8_t run_launcher(void);
 
 void run_cart_normal(void);
+void run_cart_normal_vic(void);
 void run_cart_magic_desk(void);
 void run_cart_ocean(void);
 void run_cart_fun_play(void);
