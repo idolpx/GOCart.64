@@ -15,7 +15,9 @@ int main(void) {
    board_setup();
 
    c64_set_exrom_game(1, 1);         // <no cartridge>
-   c64_reset();
+   c64_hold_reset();
+   sleep_ms(250);
+   c64_release_reset();
 
    // mount SD
    if(!filesystem_mount())
@@ -25,7 +27,7 @@ int main(void) {
    i2c_slave_init(i2c0, I2C_ADDR, &i2c_slave_handler);
    i2c_init_regspace();
 
-   sleep_ms(250);
+   sleep_ms(500);
 
    print_prompt(true);
 
