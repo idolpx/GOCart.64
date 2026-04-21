@@ -565,13 +565,8 @@ void __time_critical_func(run_cart_easyflash)(void) {
          }
 
          if (dout) {
-            //wait_until(1);        // C64 runs, C64C: fails on some games
-            
             asm volatile("nop\n");  // runs for C64 and C64C (!)
             asm volatile("nop\n");
-            
-            //wait_until(2);          // C64: runs,  C64C: fails on some games
-            //wait_low(PHI2);       // C64: always fails, C64C: runs
             SET_DATA_MODE_IN
             dout = false;
          }
@@ -647,6 +642,7 @@ void __time_critical_func(run_cart_zaxxon)(void) {
 
    volatile uint32_t control;
    volatile uint32_t addr;
+   bool dout = false;
 
    core1_args_t *p = (core1_args_t*) multicore_fifo_pop_blocking();
    uint8_t **banks = p->crt_banks;
@@ -657,28 +653,35 @@ void __time_critical_func(run_cart_zaxxon)(void) {
 
    /* uint32_t irqstatus = */ save_and_disable_interrupts();
 
+   wait_low(PHI2);
+
    while(1) {
+
+      wait_high(PHI2);
 
       GPIO_GET_LOW_32(control);
       addr = (control & ADDR_GPIO_MASK);
       COMPILER_BARRIER();
 
-      if( control & PHI2_MASK) {
+      if( !(control & ROML_MASK) ) {
 
+         DATA_OUT(rom0_ptr[addr & 0x0fff]);
+         SET_DATA_MODE_OUT
+         dout = true;
+
+         rom_ptr = banks[addr & 0x1000 ? 1 : 0];
+
+      } else if( !(control & ROMH_MASK) ) {
+
+         DATA_OUT(rom_ptr[addr & 0x3fff]);
+         SET_DATA_MODE_OUT
+         dout = true;
+      }
+
+      if (dout) {
+         dout = false;
+         wait_low(PHI2);
          SET_DATA_MODE_IN
-
-         if( !(control & ROML_MASK) ) {
-
-            DATA_OUT(rom0_ptr[addr & 0x0fff]);
-            SET_DATA_MODE_OUT
-
-            rom_ptr = banks[addr & 0x1000 ? 1 : 0];
-
-         } else if( !(control & ROMH_MASK) ) {
-
-            DATA_OUT(rom_ptr[addr & 0x3fff]);
-            SET_DATA_MODE_OUT
-         }
       }
    }  // end loop
 }

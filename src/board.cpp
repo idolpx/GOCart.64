@@ -75,9 +75,9 @@ void board_setup(void) {
    gpio_disable_pulls(BA);
    gpio_set_dir(BA, GPIO_IN);
 
-   gpio_init(NMI);
-   gpio_set_dir(NMI, GPIO_OUT);
-   gpio_put(NMI, 1);
+   //gpio_init(NMI);
+   //gpio_set_dir(NMI, GPIO_OUT);
+   //gpio_put(NMI, 1);
 
    gpio_init(LED);
    gpio_set_dir(LED, GPIO_OUT);
