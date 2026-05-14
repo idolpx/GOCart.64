@@ -87,7 +87,7 @@ add_custom_command(
    TARGET ${PROJECT} POST_BUILD
    COMMAND ${CMAKE_COMMAND} -E cat
             ${CMAKE_BINARY_DIR}/${PROJECT}.bin
-            ${CMAKE_SOURCE_DIR}/launcher/build/launcher.bin
+            ${CMAKE_SOURCE_DIR}/launcher/build/KungFuLauncher_v2.XX.bin
             > ${CMAKE_BINARY_DIR}/${PROJECT}.img.bin
 )
 
