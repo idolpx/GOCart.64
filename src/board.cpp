@@ -100,6 +100,10 @@ void board_setup(void) {
    //gpio_disable_pulls(DMA);
    //gpio_set_dir(DMA, GPIO_IN);
 
+   gpio_init(DOTCLK);
+   gpio_disable_pulls(DOTCLK);
+   gpio_set_dir(DOTCLK, GPIO_IN);
+
    gpio_init_mask(ADDR_GPIO_MASK | DATA_GPIO_MASK);
    gpio_set_dir_in_masked(ADDR_GPIO_MASK | DATA_GPIO_MASK);
 

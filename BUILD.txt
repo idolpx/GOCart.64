@@ -1,0 +1,3 @@
+
+cmake -B build/release -DPICO_BOARD=weact_rp2350b_core
+cmake -B build/debug -DPICO_BOARD=weact_rp2350b_core -DDEBUG=ON

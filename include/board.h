@@ -23,6 +23,7 @@
 #define IRQ          GC_IRQ_PIN
 #define RESET        GC_RESET_PIN
 #define DMA          GC_DMA_PIN
+#define DOTCLK       GC_DOTCLK_PIN
 #define GAME         GC_GAME_PIN
 #define EXROM        GC_EXROM_PIN
 
