@@ -1,3 +1,28 @@
 
+# GOCart.64 — Windows build instructions
+#
+# === Required environment (persist once for the current user) ===
+#   $env:PICO_SDK_PATH        = 'C:\pico-sdk'                          # this repo
+#   $env:PICO_TOOLCHAIN_PATH  = 'C:\Users\jjohn\Tools\arm-gnu-toolchain\bin'
+#   setx PICO_SDK_PATH 'C:\pico-sdk'
+#   setx PICO_TOOLCHAIN_PATH 'C:\Users\jjohn\Tools\arm-gnu-toolchain\bin'
+#
+# === Required tools already installed on this machine ===
+#   ARM GNU Toolchain 15.2          C:\Users\jjohn\Tools\arm-gnu-toolchain\bin
+#   Ninja 1.13.2                    C:\Users\jjohn\Tools\ninja\ninja.exe
+#   w64devkit 2.8 (make, gcc)      C:\Users\jjohn\Tools\w64devkit\w64devkit\bin
+#   cc65 V2.19 (built from source) C:\Users\jjohn\Tools\cc65\bin
+#   uf2conv CLI shim                C:\Users\jjohn\Tools\uf2conv\uf2conv.cmd
+#   raspberrypi/pico-sdk            C:\pico-sdk
+#   microsoft/uf2                   C:\Users\jjohn\Tools\uf2conv
+#
+# === Repo sub-tree (already cloned) ===
+#   lib\no-OS-FatFS-SD-SDIO-SPI-RPi-Pico
+#
+# === Release build ===
 cmake -B build/release -DPICO_BOARD=weact_rp2350b_core
-cmake -B build/debug -DPICO_BOARD=weact_rp2350b_core -DDEBUG=ON
+cmake --build build/release
+
+# === Debug build (Ninja, recommended) ===
+cmake -B build/debug -G Ninja -DPICO_BOARD=weact_rp2350b_core -DDEBUG=ON
+cmake --build build/debug

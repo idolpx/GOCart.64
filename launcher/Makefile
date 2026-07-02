@@ -58,10 +58,13 @@ force:
 build:
 	@mkdir -p $@
 
+# CC65_HOME ?= /usr/local/lib/cc65
+CC65_HOME ?= C:/Users/jjohn/Tools/cc65
+
 build/$(name).bin: build/crt0.crt.o $(obj) $(ld_config) $(libef3usb)
 	ld65 -o $@ -Ln $@.lbl -m $@.map -C $(ld_config) build/crt0.crt.o $(obj) \
 		--lib  $(libef3usb) \
-		-L /usr/local/lib/cc65/lib --lib c64.lib
+		-L $(CC65_HOME)/lib --lib c64.lib
 	@cat $@.map | grep -e "^Name\|^CODE\|^DATA\|^BSS\|^RODATA\|^ONCE\|^INIT\|^EAPI"
 
 .PHONY: clean

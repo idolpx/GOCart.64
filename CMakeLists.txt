@@ -7,7 +7,11 @@ set(PICO_PLATFORM rp2350)
 # set boards directory
 set(PICO_BOARD_HEADER_DIRS ${CMAKE_CURRENT_LIST_DIR}/boards)
 
-set(PICO_SDK_PATH /usr/share/pico-sdk)
+if(NOT DEFINED ENV{PICO_SDK_PATH})
+    set(PICO_SDK_PATH "C:\\pico-sdk")
+else()
+    set(PICO_SDK_PATH $ENV{PICO_SDK_PATH})
+endif()
 include(${PICO_SDK_PATH}/pico_sdk_init.cmake)
 
 project(${PROJECT} C CXX ASM)
